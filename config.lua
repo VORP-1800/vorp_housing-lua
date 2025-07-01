@@ -1,7 +1,7 @@
 Config = {}
 Config.debug = false
 Config.UpdateTime = 5            -- Refresh database house in * minute
-Config.defaultlang = "en"
+Config.defaultlang = "es"
 Config.BuyHouseKey = 0xC7B5340A  -- Enter
 Config.OpenDoorKey = 0xE8342FF2  -- Hold Left ALT
 Config.MyKey = "myHouseKey"      -- Command to get your house key if you lot it or give it to someones
