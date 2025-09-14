@@ -1,5 +1,6 @@
 local Lib = Import "blips"
 local Blips = Lib.Blips --[[@as MAP]]
+local Core = exports.vorp_core:GetCore()
 
 local rooms = {}
 local houses = {}
@@ -15,7 +16,7 @@ end
 
 
 local function loadrooms()
-    LIB.CORE.RpcCall("Vorp_housing:getrooms", function(result)
+    Core.RpcCall("Vorp_housing:getrooms", function(result)
         if result == nil then
             if Config.debug then
                 print("ROOMS NOT LOADED")
@@ -65,7 +66,7 @@ end
 
 
 local function loadhouses()
-    LIB.CORE.RpcCall("Vorp_housing:gethouses", function(result)
+    Core.RpcCall("Vorp_housing:gethouses", function(result)
         if result == nil then
             if Config.debug then
                 print("HOUSES NOT LOADED")
@@ -147,15 +148,15 @@ CreateThread(function()
 
                 DrawText3Ds(v.text.x, v.text.y, v.text.z, message)
                 if IsControlJustPressed(0, Config.BuyHouseKey) and canbuy2 then
-                    LIB.CORE.RpcCall("Vorp_housing:buyrooms", function(result)
+                    Core.RpcCall("Vorp_housing:buyrooms", function(result)
                         if result == 1 then
-                            LIB.NOTIFY:RightTip(_U("boughtroom"), 4000)
+                            Core.NotifyRightTip(_U("boughtroom"), 4000)
                             loadrooms()
                         elseif result == 2 then
-                            LIB.NOTIFY:RightTip(_U("notsellable"), 4000)
+                            Core.NotifyRightTip(_U("notsellable"), 4000)
                             loadrooms()
                         elseif result == 3 then
-                            LIB.NOTIFY:RightTip(_U("nomoney"), 4000)
+                            Core.NotifyRightTip(_U("nomoney"), 4000)
                         end
                     end, args)
                 end
@@ -188,15 +189,15 @@ CreateThread(function()
                 end
                 DrawText3Ds(v.text.x, v.text.y, v.text.z, message)
                 if IsControlJustPressed(0, Config.BuyHouseKey) and canbuy then
-                    LIB.CORE.RpcCall("Vorp_housing:buyhouse", function(result)
+                    Core.RpcCall("Vorp_housing:buyhouse", function(result)
                         if result == 1 then
-                            LIB.NOTIFY:RightTip(_U("boughthouse"), 4000)
+                            Core.NotifyRightTip(_U("boughthouse"), 4000)
                             loadhouses()
                         elseif result == 2 then
-                            LIB.NOTIFY:RightTip(_U("notsellable"), 4000)
+                            Core.NotifyRightTip(_U("notsellable"), 4000)
                             loadhouses()
                         elseif result == 3 then
-                            LIB.NOTIFY:RightTip(_U("nomoney"), 4000)
+                            Core.NotifyRightTip(_U("nomoney"), 4000)
                         end
                     end, args)
                 end
@@ -319,11 +320,11 @@ CreateThread(function()
                         doorID.locked)
 
                     if IsControlJustPressed(2, Config.OpenDoorKey) then
-                        LIB.CORE.RpcCall("Vorp_housing:checkkey", function(result)
+                        Core.RpcCall("Vorp_housing:checkkey", function(result)
                             if result then
                                 TriggerEvent("Vorp_housing:changedoorhouse", k, k2)
                             else
-                                TriggerEvent("vorp:TipBottom", _U("havekey"), 2000)
+                                Core.NotifyObjective(_U("havekey"), 2000)
                             end
                         end, v.key)
                         OpenDoors(PlayerPedId(), doorID.objCoords)
@@ -399,12 +400,12 @@ CreateThread(function()
                     DrawText3D(doorID.objCoords.x, doorID.objCoords.y, doorID.objCoords.z + 0.2, "press alt to open door",
                         doorID.locked)
                     if IsControlJustPressed(2, 0xE8342FF2) then -- Hold ALT
-                        LIB.CORE.RpcCall("Vorp_housing:checkkey", function(result)
+                        Core.RpcCall("Vorp_housing:checkkey", function(result)
                             if result then
                                 TriggerEvent("Vorp_housing:changedoorroom", k, k2)
                                 OpenDoors(PlayerPedId(), doorID.objCoords)
                             else
-                                TriggerEvent("vorp:TipBottom", _U("havekey"), 2000)
+                                Core.NotifyObjective(_U("havekey"), 2000)
                             end
                         end, v.key)
                     end
