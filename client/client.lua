@@ -1,162 +1,28 @@
+local Lib = Import "blips"
+local Blips = Lib.Blips --[[@as MAP]]
+local Core = exports.vorp_core:GetCore()
+
 local rooms = {}
 local houses = {}
-local VORPcore = exports.vorp_core:GetCore()
-local VORPutils = {}
-local loaded_house = false
-local loaded_rooms = false
 
-TriggerEvent("getUtils", function(utils)
-    VORPutils = utils
-end)
-
--------- Get all rooms and set blip -------------------
-CreateThread(function()
-    while true do
-        loadrooms()
-        loadhouses()
-        Wait(60000 * Config.UpdateTime)
-    end
-end)
-
-local args = {}
--------- Show Text -------
-CreateThread(function()
-    while true do
-        local letSleep = 1000
-        local playerCoords = GetEntityCoords(PlayerPedId())
-
-        for _, v in ipairs(Config.Rooms) do
-            local distance = #(playerCoords - v.text)
-            local idistance = #(playerCoords - v.Inventory)
-
-            if idistance < 2 then
-                letSleep = 0
-                DrawTxt(_U("openinventory"), 0.50, 0.90, Config.OpenInventoryTextSize, Config.OpenInventoryTextSize, true, 255, 255, 255, 255, true)
-                if IsControlJustPressed(0, Config.BuyHouseKey) then
-                    TriggerServerEvent("Vorp_housing:GetInventoryRooms", v.Id)
-                end
-            end
-
-            if distance < 2 then
-                letSleep = 0
-                local message = ""
-                local canbuy2 = false
-                if checknotexist(v.Id, rooms) then
-                    message = _U("buy") .. v.Price .. "$\n" .. _U("pressenterroom")
-                    args = v
-                    canbuy2 = true
-                end
-
-                DrawText3Ds(v.text.x, v.text.y, v.text.z, message)
-                if IsControlJustPressed(0, Config.BuyHouseKey) and canbuy2 then
-                    VORPcore.RpcCall("Vorp_housing:buyrooms", function(result)
-                        if result == 1 then
-                            VORPcore.NotifyRightTip(_U("boughtroom"), 4000)
-                            loadrooms()
-                        elseif result == 2 then
-                            VORPcore.NotifyRightTip(_U("notsellable"), 4000)
-                            loadrooms()
-                        elseif result == 3 then
-                            VORPcore.NotifyRightTip(_U("nomoney"), 4000)
-                        end
-                    end, args)
-                end
-            end
-        end
-
-
-
-        for _, v in ipairs(Config.Houses) do
-            local distance2 = #(playerCoords - v.text)
-            local idistance2 = #(playerCoords - v.Inventory)
-
-            if idistance2 < 2.0 then
-                letSleep = 0
-                DrawTxt(_U("openinventory"), 0.50, 0.90, Config.OpenInventoryTextSize, Config.OpenInventoryTextSize, true, 255, 255, 255, 255, true)
-                if IsControlJustPressed(0, Config.BuyHouseKey) then
-                    TriggerServerEvent("Vorp_housing:GetInventoryHouses", v.Id)
-                end
-            end
-
-            if distance2 < 2 then
-                letSleep = 0
-                local message = ""
-                local canbuy = false
-                if checknotexist(v.Id, houses) then
-                    message = _U("buy") .. v.Price .. "$\n" .. _U("pressenterhouse")
-                    args = v
-                    canbuy = true
-                end
-                DrawText3Ds(v.text.x, v.text.y, v.text.z, message)
-                if IsControlJustPressed(0, Config.BuyHouseKey) and canbuy then
-                    VORPcore.RpcCall("Vorp_housing:buyhouse", function(result)
-                        if result == 1 then
-                            VORPcore.NotifyRightTip(_U("boughthouse"), 4000)
-                            loadhouses()
-                        elseif result == 2 then
-                            VORPcore.NotifyRightTip(_U("notsellable"), 4000)
-                            loadhouses()
-                        elseif result == 3 then
-                            VORPcore.NotifyRightTip(_U("nomoney"), 4000)
-                        end
-                    end, args)
-                end
-            end
-        end
-
-        Wait(letSleep)
-    end
-end)
-
-function DrawTxt(str, x, y, w, h, enableShadow, col1, col2, col3, a, centre)
-    local str = VarString(10, "LITERAL_STRING", str)
-    SetTextScale(w, h)
-    BgSetTextColor(math.floor(col1), math.floor(col2), math.floor(col3), math.floor(a))
-    SetTextCentre(centre)
-    if enableShadow then SetTextDropshadow(1, 0, 0, 0, 255) end
-    Citizen.InvokeNative(0xADA9255D, 1);
-    BgDisplayText(str, x, y)
-    if Config.OpenInventoryTextSprite then
-        DrawSprite("feeds", "toast_bg", x + 0.0050, y + 0.0170, 0.190, 0.060, 0.1, 20, 20, 20, 200, 0)
-    end
-end
-
-function DrawText3Ds(x, y, z, text)
-    local _, _x, _y = GetScreenCoordFromWorldCoord(x, y, z)
-    SetTextScale(0.35, 0.35)
-    SetTextFontForCurrentCommand(9)
-    BgSetTextColor(255, 255, 255, 215)
-    local str = VarString(10, 'LITERAL_STRING', text, Citizen.ResultAsLong())
-    SetTextCentre(1)
-    BgDisplayText(str, _x, _y)
-end
-
-RegisterNetEvent("vorp:SelectedCharacter", function(charid)
-    loadrooms()
-    loadhouses()
-    TriggerServerEvent('Vorp_housing:Load')
-end)
-
-function checknotexist(id, table)
-    local notexistt = true
-    for k, v in ipairs(table) do
+local function idNotExists(id, tbl)
+    for _, v in ipairs(tbl) do
         if v.id == id then
-            notexistt = false
+            return false
         end
     end
-    return notexistt
+    return true
 end
 
-function loadrooms()
-    VORPcore.RpcCall("Vorp_housing:getrooms", function(result)
+
+local function loadrooms()
+    Core.RpcCall("Vorp_housing:getrooms", function(result)
         if result == nil then
-            loaded_rooms = false
             if Config.debug then
                 print("ROOMS NOT LOADED")
             end
         else
             rooms = result
-            loaded_rooms = true
             if Config.debug then
                 print("ROOMS LOADED")
             end
@@ -164,30 +30,44 @@ function loadrooms()
     end, nil)
 end
 
-local function loadBlips(houses)
+local function loadBlips(house)
     for _, v in ipairs(Config.Houses) do
         local sprite = "blip_ambient_quartermaster"
-        for _, vv in ipairs(houses) do
+        for _, vv in ipairs(house) do
             if v.Id == vv.id then
                 sprite = "blip_proc_home"
                 break
             end
         end
         if not v.BlipHandle then
-            local blip = VORPutils.Blips:SetBlip(v.Name, sprite, 0.2, v.text.x, v.text.y, v.text.z, nil)
-            v.BlipHandle = blip:Get()
+            local blip = Blips:Create('coords', {
+                Pos = vector3(v.text.x, v.text.y, v.text.z),
+                Blip = 1664425300,
+                Options = {
+                    sprite = sprite,
+                    name = v.Name,
+                },
+            })
+            v.BlipHandle = blip:GetHandle()
         else
             RemoveBlip(v.BlipHandle)
-            local blip = VORPutils.Blips:SetBlip(v.Name, sprite, 0.2, v.text.x, v.text.y, v.text.z, nil)
-            v.BlipHandle = blip:Get()
+            local blip = Blips:Create('coords', {
+                Pos = vector3(v.text.x, v.text.y, v.text.z),
+                Blip = 1664425300,
+                Options = {
+                    sprite = sprite,
+                    name = v.Name,
+                },
+            })
+            v.BlipHandle = blip:GetHandle()
         end
     end
 end
 
-function loadhouses()
-    VORPcore.RpcCall("Vorp_housing:gethouses", function(result)
+
+local function loadhouses()
+    Core.RpcCall("Vorp_housing:gethouses", function(result)
         if result == nil then
-            loaded_house = false
             if Config.debug then
                 print("HOUSES NOT LOADED")
             end
@@ -203,16 +83,137 @@ function loadhouses()
     end, nil)
 end
 
--- OnresourceStop
-AddEventHandler("onResourceStop", function(resource)
-    if resource == GetCurrentResourceName() then
-        for _, v in ipairs(Config.Houses) do
-            if v.BlipHandle then
-                RemoveBlip(v.BlipHandle)
-            end
-        end
+local function DrawTxt(str, x, y, w, h, enableShadow, col1, col2, col3, a, centre)
+    local str = VarString(10, "LITERAL_STRING", str)
+    SetTextScale(w, h)
+    BgSetTextColor(math.floor(col1), math.floor(col2), math.floor(col3), math.floor(a))
+    SetTextCentre(centre)
+    if enableShadow then SetTextDropshadow(1, 0, 0, 0, 255) end
+    Citizen.InvokeNative(0xADA9255D, 1);
+    BgDisplayText(str, x, y)
+    if Config.OpenInventoryTextSprite then
+        DrawSprite("feeds", "toast_bg", x + 0.0050, y + 0.0170, 0.190, 0.060, 0.1, 20, 20, 20, 200, 0)
+    end
+end
+
+local function DrawText3Ds(x, y, z, text)
+    local _, _x, _y = GetScreenCoordFromWorldCoord(x, y, z)
+    SetTextScale(0.35, 0.35)
+    SetTextFontForCurrentCommand(9)
+    BgSetTextColor(255, 255, 255, 215)
+    local str = VarString(10, 'LITERAL_STRING', text, Citizen.ResultAsLong())
+    SetTextCentre(1)
+    BgDisplayText(str, _x, _y)
+end
+-------- Get all rooms and set blip -------------------
+CreateThread(function()
+    repeat Wait(5000) until LocalPlayer.state.IsInSession
+    while true do
+        loadrooms()
+        loadhouses()
+        Wait(60000 * Config.UpdateTime)
     end
 end)
+
+local args = {}
+-------- Show Text -------
+CreateThread(function()
+    repeat Wait(5000) until LocalPlayer.state.IsInSession
+    while true do
+        local letSleep = 1000
+        local playerCoords = GetEntityCoords(PlayerPedId())
+
+        for _, v in ipairs(Config.Rooms) do
+            local distance = #(playerCoords - v.text)
+            local idistance = #(playerCoords - v.Inventory)
+
+            if idistance < 2 then
+                letSleep = 0
+                DrawTxt(_U("openinventory"), 0.50, 0.90, Config.OpenInventoryTextSize, Config.OpenInventoryTextSize, true,
+                    255, 255, 255, 255, true)
+                if IsControlJustPressed(0, Config.BuyHouseKey) then
+                    TriggerServerEvent("Vorp_housing:GetInventoryRooms", v.Id)
+                end
+            end
+
+            if distance < 2 then
+                letSleep = 0
+                local message = ""
+                local canbuy2 = false
+                if idNotExists(v.Id, rooms) then
+                    message = _U("buy") .. v.Price .. "$\n" .. _U("pressenterroom")
+                    args = v
+                    canbuy2 = true
+                end
+
+                DrawText3Ds(v.text.x, v.text.y, v.text.z, message)
+                if IsControlJustPressed(0, Config.BuyHouseKey) and canbuy2 then
+                    Core.RpcCall("Vorp_housing:buyrooms", function(result)
+                        if result == 1 then
+                            Core.NotifyRightTip(_U("boughtroom"), 4000)
+                            loadrooms()
+                        elseif result == 2 then
+                            Core.NotifyRightTip(_U("notsellable"), 4000)
+                            loadrooms()
+                        elseif result == 3 then
+                            Core.NotifyRightTip(_U("nomoney"), 4000)
+                        end
+                    end, args)
+                end
+            end
+        end
+
+
+
+        for _, v in ipairs(Config.Houses) do
+            local distance2 = #(playerCoords - v.text)
+            local idistance2 = #(playerCoords - v.Inventory)
+
+            if idistance2 < 2.0 then
+                letSleep = 0
+                DrawTxt(_U("openinventory"), 0.50, 0.90, Config.OpenInventoryTextSize, Config.OpenInventoryTextSize, true,
+                    255, 255, 255, 255, true)
+                if IsControlJustPressed(0, Config.BuyHouseKey) then
+                    TriggerServerEvent("Vorp_housing:GetInventoryHouses", v.Id)
+                end
+            end
+
+            if distance2 < 2 then
+                letSleep = 0
+                local message = ""
+                local canbuy = false
+                if idNotExists(v.Id, houses) then
+                    message = _U("buy") .. v.Price .. "$\n" .. _U("pressenterhouse")
+                    args = v
+                    canbuy = true
+                end
+                DrawText3Ds(v.text.x, v.text.y, v.text.z, message)
+                if IsControlJustPressed(0, Config.BuyHouseKey) and canbuy then
+                    Core.RpcCall("Vorp_housing:buyhouse", function(result)
+                        if result == 1 then
+                            Core.NotifyRightTip(_U("boughthouse"), 4000)
+                            loadhouses()
+                        elseif result == 2 then
+                            Core.NotifyRightTip(_U("notsellable"), 4000)
+                            loadhouses()
+                        elseif result == 3 then
+                            Core.NotifyRightTip(_U("nomoney"), 4000)
+                        end
+                    end, args)
+                end
+            end
+        end
+
+        Wait(letSleep)
+    end
+end)
+
+RegisterNetEvent("vorp:SelectedCharacter", function(charid)
+    loadrooms()
+    loadhouses()
+    TriggerServerEvent('Vorp_housing:Load')
+end)
+
 
 -------------------- Refresh client side ---------------
 RegisterNetEvent("vorp_housing:refreshall", function()
@@ -220,6 +221,7 @@ RegisterNetEvent("vorp_housing:refreshall", function()
     loadhouses()
     TriggerServerEvent('Vorp_housing:Load')
 end)
+
 --------------- Command give near house key --------------
 RegisterCommand(Config.MyKey, function()
     local playerCoords = GetEntityCoords(PlayerPedId())
@@ -230,7 +232,7 @@ RegisterCommand(Config.MyKey, function()
             TriggerServerEvent("Vorp_housing:givekeys", v.Id)
         end
     end
-    for k, v in ipairs(Config.Houses) do
+    for _, v in ipairs(Config.Houses) do
         local distance2 = #(playerCoords - v.text)
         if distance2 < 2 then
             TriggerServerEvent("Vorp_housing:givekeys", v.Id)
@@ -242,13 +244,13 @@ end, false)
 RegisterCommand(Config.SellHouse, function()
     local playerCoords = GetEntityCoords(PlayerPedId())
 
-    for k, v in ipairs(Config.Rooms) do
+    for _, v in ipairs(Config.Rooms) do
         local distance = #(playerCoords - v.text)
         if distance < 2 then
             TriggerServerEvent("Vorp_housing:sellhouse", v.Id)
         end
     end
-    for k, v in ipairs(Config.Houses) do
+    for _, v in ipairs(Config.Houses) do
         local distance2 = #(playerCoords - v.text)
         if distance2 < 2 then
             TriggerServerEvent("Vorp_housing:sellhouse", v.Id)
@@ -259,16 +261,16 @@ end, false)
 
 ----------------- Houses --------------
 CreateThread(function()
+    repeat Wait(5000) until LocalPlayer.state.IsInSession
     while true do
-        Wait(0)
-        local sleep = true
+        local sleep = 800
         local playerCoords = GetEntityCoords(PlayerPedId())
         for k, v in ipairs(Config.Houses) do
             for k2, doorID in ipairs(v.Doors) do
                 local distance = #(playerCoords - doorID.objCoords)
 
                 if distance < 10 then
-                    sleep = false
+                    sleep = 0
                     if doorID.locked then
                         if DoorSystemGetOpenRatio(doorID.object) ~= 0.0 then
                             DoorSystemSetOpenRatio(doorID.object, 0.0, true)
@@ -313,16 +315,16 @@ CreateThread(function()
                 end
 
                 if distance < 2.0 then
-                    sleep = false
+                    sleep = 0
                     DrawText3D(doorID.objCoords.x, doorID.objCoords.y, doorID.objCoords.z + 0.2, _U("opendoor"),
                         doorID.locked)
 
                     if IsControlJustPressed(2, Config.OpenDoorKey) then
-                        VORPcore.RpcCall("Vorp_housing:checkkey", function(result)
+                        Core.RpcCall("Vorp_housing:checkkey", function(result)
                             if result then
                                 TriggerEvent("Vorp_housing:changedoorhouse", k, k2)
                             else
-                                TriggerEvent("vorp:TipBottom", _U("havekey"), 2000)
+                                Core.NotifyObjective(_U("havekey"), 2000)
                             end
                         end, v.key)
                         OpenDoors(PlayerPedId(), doorID.objCoords)
@@ -330,40 +332,18 @@ CreateThread(function()
                 end
             end
         end
-        if sleep then
-            Wait(1000)
-        end
+
+        Wait(sleep)
     end
 end)
 
-CreateThread(function()
-    while true do
-        Wait(0)
-        local sleep = true
-        local playerCoords = GetEntityCoords(PlayerPedId())
-        for k, v in ipairs(Config.Houses) do
-            for k2, doorID in ipairs(v.Doors) do
-                local distance = #(playerCoords - doorID.objCoords)
-
-                if distance < 2.0 then
-                    sleep = false
-                    TriggerServerEvent("Vorp_housing:Load")
-                    Wait(10000)
-                end
-            end
-        end
-        if sleep then
-            Wait(1000)
-        end
-    end
-end)
 
 ----------------------- Rooms ----------------------
 
 CreateThread(function()
+    repeat Wait(5000) until LocalPlayer.state.IsInSession
     while true do
-        Wait(0)
-        local sleep = true
+        local sleep = 800
         local playerCoords = GetEntityCoords(PlayerPedId())
         for k, v in ipairs(Config.Rooms) do
             for k2, doorID in ipairs(v.Doors) do
@@ -371,7 +351,7 @@ CreateThread(function()
 
 
                 if distance < 10 then
-                    sleep = false
+                    sleep = 0
                     if doorID.locked then
                         if DoorSystemGetOpenRatio(doorID.object) ~= 0.0 then
                             DoorSystemSetOpenRatio(doorID.object, 0.0, true)
@@ -414,48 +394,59 @@ CreateThread(function()
                         end
                     end
                 end
+
                 if distance < 2.0 then
-                    sleep = false
+                    sleep = 0
                     DrawText3D(doorID.objCoords.x, doorID.objCoords.y, doorID.objCoords.z + 0.2, "press alt to open door",
                         doorID.locked)
                     if IsControlJustPressed(2, 0xE8342FF2) then -- Hold ALT
-                        VORPcore.RpcCall("Vorp_housing:checkkey", function(result)
+                        Core.RpcCall("Vorp_housing:checkkey", function(result)
                             if result then
                                 TriggerEvent("Vorp_housing:changedoorroom", k, k2)
                                 OpenDoors(PlayerPedId(), doorID.objCoords)
                             else
-                                TriggerEvent("vorp:TipBottom", _U("havekey"), 2000)
+                                Core.NotifyObjective(_U("havekey"), 2000)
                             end
                         end, v.key)
                     end
                 end
             end
         end
-        if sleep then
-            Wait(1000)
-        end
+
+        Wait(sleep)
     end
 end)
 
 CreateThread(function()
+    repeat Wait(5000) until LocalPlayer.state.IsInSession
     while true do
-        Wait(0)
-        local sleep = true
+        local sleep = 800
         local playerCoords = GetEntityCoords(PlayerPedId())
-        for k, v in ipairs(Config.Rooms) do
-            for k2, doorID in ipairs(v.Doors) do
+
+        for _, v in ipairs(Config.Rooms) do
+            for _, doorID in ipairs(v.Doors) do
                 local distance = #(playerCoords - doorID.objCoords)
 
                 if distance < 2.0 then
-                    sleep = false
+                    sleep = 0
                     TriggerServerEvent("Vorp_housing:Load")
                     Wait(10000)
                 end
             end
         end
-        if sleep then
-            Wait(1000)
+
+        for _, v in ipairs(Config.Houses) do
+            for _, doorID in ipairs(v.Doors) do
+                local distance = #(playerCoords - doorID.objCoords)
+                if distance < 2.0 then
+                    sleep = 0
+                    TriggerServerEvent("Vorp_housing:Load")
+                    Wait(10000)
+                end
+            end
         end
+
+        Wait(sleep)
     end
 end)
 

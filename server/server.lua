@@ -1,11 +1,7 @@
 local HouseInfo = {}
 local RoomInfo = {}
-VorpInv = exports.vorp_inventory:vorp_inventoryApi()
-local VORPcore = {}
-
-TriggerEvent("getCore", function(core)
-	VORPcore = core
-end)
+local VorpInv = exports.vorp_inventory:vorp_inventoryApi()
+local VORPcore = exports.vorp_core:GetCore()
 
 -------------- Register Inventory -----------
 AddEventHandler("onResourceStart", function(resourcename)
@@ -133,7 +129,7 @@ RegisterNetEvent("Vorp_housing:givekeys", function(id, key)
 	local Character = User.getUsedCharacter
 	local charidentifier = Character.charIdentifier
 
-	MySQL.query('SELECT * FROM housing WHERE charidentifier = ? AND id = ?', { charidentifier, id }, function(result)
+	MySQL.query('SELECT key FROM housing WHERE charidentifier = ? AND id = ?', { charidentifier, id }, function(result)
 		--if result ~= nil then
 		if result[1] then
 			VorpInv.addItem(_source, result[1].key, 1, false)
@@ -175,7 +171,7 @@ RegisterNetEvent("Vorp_housing:sellhouse", function(id, key)
 											if keycount > 0 then
 												VorpInv.subItem(_source, result[1].key, keycount, nil)
 											end
-											TriggerClientEvent("vorp:Tip", _source, _U('sellhouse') .. lastprice, 4000)
+											Core.NotifyRightTip(_source, _U('sellhouse') .. lastprice, 4000)
 										end
 									end
 
@@ -187,7 +183,7 @@ RegisterNetEvent("Vorp_housing:sellhouse", function(id, key)
 											if keycount > 0 then
 												VorpInv.subItem(_source, result[1].key, keycount, nil)
 											end
-											TriggerClientEvent("vorp:Tip", _source, _U('sellhouse') .. lastprice, 4000)
+											Core.NotifyRightTip(_source, _U('sellhouse') .. lastprice, 4000)
 										end
 									end
 									TriggerClientEvent("vorp_housing:refreshall", _source)
@@ -195,7 +191,7 @@ RegisterNetEvent("Vorp_housing:sellhouse", function(id, key)
 							end)
 					end)
 			else
-				TriggerClientEvent("vorp:Tip", _source, _U('dontsell'), 4000)
+				Core.NotifyObjective(_source, _U('dontsell'), 4000)
 			end
 		end
 	end)
